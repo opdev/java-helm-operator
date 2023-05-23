@@ -4,6 +4,14 @@
 *.dll
 *.so
 *.dylib
+*.class
+*.jar
+
+# Maven outputs
+*.lst
+
+# Quarkus bootstrap
+*.dat
 
 # Test binary, built with `go test -c`
 *.test
@@ -11,5 +19,20 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Intellij
+.idea
+
+# VSCode
+.vscode/
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Generated code
+target/**/*
+
+# Downloaded binaries
+bin/
+
+# Generated bundle folder
+bundle/

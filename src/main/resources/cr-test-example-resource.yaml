@@ -1,0 +1,5 @@
+apiVersion: tools.opdev.io/v1
+kind: ExampleValues
+metadata:
+  name: test-resource
+spec:
