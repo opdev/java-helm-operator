@@ -1,14 +1,4 @@
-# repository-template
-new repository description
+# Java Helm Operator
+A proof-of-concept operator in Java, which parses and applies a Helm chart with values given by the user.
 
-## Usage
-usage description
-
-## Installation
-installation steps
-
-## How to contribute
-steps
-
-## License
-license description and link
+## DO NOT USE YET. BROKEN.

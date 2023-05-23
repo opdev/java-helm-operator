@@ -1,5 +1,6 @@
 
 VERSION ?= 0.0.1
+IMAGE_BUILDER?=podman
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -25,14 +26,14 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # opdev.io/java-helm-bundle:$VERSION and opdev.io/java-helm-catalog:$VERSION.
-IMAGE_TAG_BASE ?= opdev.io/java-helm
+IMAGE_TAG_BASE ?= quay.io/opdev/java-helm-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= quay.io/opdev/java-helm-operator-controller:latest
 
 all: docker-build
 
@@ -54,11 +55,17 @@ help: ## Display this help.
 
 ##@ Build
 
+native-build:
+	mvn install -Dnative -Dquarkus.native.container-build=true -Dquarkus.native.container-runtime=${IMAGE_BUILDER}
+
 docker-build: ## Build docker image with the manager.
-	mvn package -Pnative -Dquarkus.native.container-build=true -Dquarkus.container-image.image=${IMG} -Dquarkus.native.container-runtime=podman
+	mvn package -Pnative -Dquarkus.native.container-build=true -Dquarkus.container-image.image=${IMG} -Dquarkus.native.container-runtime=${IMAGE_BUILDER}
 
 docker-push: ## Push docker image with the manager.
 	mvn package -Dquarkus.container-image.push=true -Dquarkus.container-image.image=${IMG}
+
+docker-build-hack: native-build
+	podman build -f src/main/docker/Dockerfile.jvm -t ${IMG} .
 
 ##@ Deployment
 
@@ -83,8 +90,8 @@ bundle:  ## Generate bundle manifests and metadata, then validate generated file
 	
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	${IMAGE_BUILDER} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 	
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
-	docker push $(BUNDLE_IMG)
+	${IMAGE_BUILDER} push $(BUNDLE_IMG)
