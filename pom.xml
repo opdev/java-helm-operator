@@ -46,11 +46,6 @@
       <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
       <version>${quarkus.version}</version>
     </dependency>
-    <dependency>
-    <groupId>com.github.jknack</groupId>
-    <artifactId>handlebars</artifactId>
-    <version>4.3.1</version>
-    </dependency>
   </dependencies>
 
   <build>
