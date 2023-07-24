@@ -3,6 +3,22 @@ A proof-of-concept operator in Java, which parses and applies a Helm chart with 
 
 ## DO NOT USE YET. BROKEN.
 
+## Testing steps (with hack for now)
+
+Create a namespace `helmtest`.
+```
+oc apply -f hack/kubernetes.yml
+oc apply -f hack/cr-test-example-resource.yaml
+```
+
+## Cleanup
+
+```
+oc delete -f hack/cr-test-example-resource.yaml
+oc delete -f hack/kubernetes.yml
+```
+
+
 ## Local debug
 
 Create VSCode launch json for attaching:

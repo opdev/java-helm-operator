@@ -3,16 +3,11 @@ package io.opdev;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -31,8 +26,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   private static final Logger log = LoggerFactory.getLogger(ExampleValuesReconciler.class);
 
   private final String pathToChart = "/deployments/example-chart";
-  private final String helmCommand = "helm template";
-  private final String outputFile = "helmResult.yaml";
+  private final String outputDir = "/deployments/helm-output";
 
   @Override
   public UpdateControl<ExampleValues> reconcile(ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
@@ -40,22 +34,31 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     try {
         parseTemplates(userValues);
     } catch (Exception e) {
-       log.error(helmCommand + " failed!", e);
+       log.error("parse templates failed!", e);
     }
     
-    createFromYaml(outputFile);
+    File helmOutputDirectory = new File(outputDir + "/example-chart/templates");
+    File[] files = helmOutputDirectory.listFiles((pathname) -> pathname.getName().endsWith(".yaml"));
+
+    for (File yaml : files){
+
+       createFromYaml(yaml.getAbsolutePath());
+
+    }
     
     return UpdateControl.noUpdate();
   }
 
   private void parseTemplates(ExampleValuesSpec userValues) throws IOException, InterruptedException {
-    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command(helmCommand + " " + pathToChart + " > " + outputFile).start();
+    log.info("Running helm template to parse " + pathToChart + " and saving output to " + outputDir);
+    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", pathToChart, "--output-dir", outputDir).start();
     helmTemplateProcess.waitFor();
 
   }
 
 
   private void createFromYaml(String pathToYaml) throws FileNotFoundException {
+    log.info("Applying yaml " + pathToYaml + " to the namespace");
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
     // Apply Kubernetes Resources
