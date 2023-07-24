@@ -6,13 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -31,7 +25,6 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   private static final Logger log = LoggerFactory.getLogger(ExampleValuesReconciler.class);
 
   private final String pathToChart = "/deployments/example-chart";
-  private final String helmCommand = "helm template";
   private final String outputFile = "helmResult.yaml";
 
   @Override
@@ -40,7 +33,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     try {
         parseTemplates(userValues);
     } catch (Exception e) {
-       log.error(helmCommand + " failed!", e);
+       log.error("parse templates failed!", e);
     }
     
     createFromYaml(outputFile);
@@ -49,7 +42,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   }
 
   private void parseTemplates(ExampleValuesSpec userValues) throws IOException, InterruptedException {
-    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command(helmCommand + " " + pathToChart + " > " + outputFile).start();
+    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", pathToChart, " > " + outputFile).start();
     helmTemplateProcess.waitFor();
 
   }

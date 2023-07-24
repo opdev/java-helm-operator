@@ -59,10 +59,10 @@ native-build:
 	mvn install -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.container-runtime=${IMAGE_BUILDER} -Dquarkus.container-image.image=${IMG}
 
 docker-build: ## Build docker image with the manager.
-	mvn package -Dquarkus.container-image.build=true -Dquarkus.container-image.image=${IMG}
+	mvn clean package -Dquarkus.container-image.build=true -Dquarkus.container-image.image=${IMG}
 
 docker-push: ## Push docker image with the manager.
-	mvn package -Dquarkus.container-image.push=true -Dquarkus.container-image.image=${IMG}
+	mvn clean package -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.image=${IMG}
 
 docker-build-hack: native-build
 	podman build -f src/main/docker/Dockerfile.jvm -t ${IMG} .
