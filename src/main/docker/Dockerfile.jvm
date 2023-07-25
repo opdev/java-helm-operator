@@ -7,11 +7,11 @@
 #
 # Then, build the image with:
 #
-# docker build -f src/main/docker/Dockerfile.jvm -t opdev/java-helm-operator-controller .
+# docker build -f src/main/docker/Dockerfile.jvm -t quay.io/pdev/java-helm-operator-controller .
 #
 # Then run the container using:
 #
-# docker run -i --rm -p 8080:8080 opdev/java-helm-operator-controller
+# docker run -i --rm -p 8080:8080 quay.io/opdev/java-helm-operator-controller
 #
 # If you want to include the debug port into your docker image
 # you will have to expose the debug port (default 5005 being the default) like this :  EXPOSE 8080 5005.
@@ -20,7 +20,7 @@
 #
 # Then run the container using :
 #
-# docker run -i --rm -p 8080:8080 opdev/java-helm-operator-controller
+# docker run -i --rm -p 8080:8080 quay.io/opdev/java-helm-operator-controller
 #
 # This image uses the `run-java.sh` script to run the application.
 # This scripts computes the command line to execute your Java application, and
@@ -77,10 +77,12 @@
 #   accessed directly. (example: "foo.example.com,bar.example.com")
 #
 ###
+FROM alpine/helm AS helm
+## Pull this image to grab a helm binary
+
 FROM registry.access.redhat.com/ubi8/openjdk-11:1.15
 
 ENV LANGUAGE='en_US:en'
-
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
 COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
@@ -88,8 +90,10 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
-# Add sample deployment yaml to apply to the cluster from code
+# Add helm chart resources to apply to the cluster from code
 COPY --chown=185 src/main/resources/ /deployments/
+
+COPY --from=helm /usr/bin/helm /usr/bin/helm
 
 EXPOSE 8080
 USER 185
