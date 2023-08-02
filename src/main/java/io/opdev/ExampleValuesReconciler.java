@@ -3,10 +3,17 @@ package io.opdev;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +37,13 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
   private final String pathToChart = "/deployments/example-chart";
   private final String outputDir = "/deployments/helm-output";
+  private final String valuesYaml = "/deployments/userValues.yaml";
 
   @Override
   public UpdateControl<ExampleValues> reconcile(ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
-    ExampleValuesSpec userValues = resource.getSpec();
     try {
-        parseTemplates(userValues);
+        writeValuesYaml(resource.getSpec());
+        parseTemplates(resource.getMetadata().getName());
     } catch (Exception e) {
        log.error("parse templates failed!", e);
     }
@@ -52,9 +60,15 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     return UpdateControl.noUpdate();
   }
 
-  private void parseTemplates(ExampleValuesSpec userValues) throws IOException, InterruptedException {
+  private void writeValuesYaml(ExampleValuesSpec spec) throws IOException {
+    String yamlRepresentation = spec.toString();
+    Path path = Paths.get(valuesYaml).toAbsolutePath();
+    Files.writeString(path, yamlRepresentation, StandardCharsets.UTF_8);
+  }
+
+  private void parseTemplates(String releaseName) throws IOException, InterruptedException {
     log.info("Running helm template to parse " + pathToChart + " and saving output to " + outputDir);
-    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", pathToChart, "--output-dir", outputDir).start();
+    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", releaseName, pathToChart, "-f", valuesYaml, "--output-dir", outputDir).start();
     helmTemplateProcess.waitFor();
 
   }
