@@ -7,9 +7,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
@@ -42,7 +45,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
     for (File yaml : files){
 
-       createFromYaml(yaml.getAbsolutePath());
+       createFromYaml(yaml.getAbsolutePath(), resource);
 
     }
     
@@ -57,12 +60,31 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   }
 
 
-  private void createFromYaml(String pathToYaml) throws FileNotFoundException {
-    log.info("Applying yaml " + pathToYaml + " to the namespace");
+  private void createFromYaml(String pathToYaml, ExampleValues resource) throws FileNotFoundException {
+    log.info("Applying yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
-    // Apply Kubernetes Resources
-    client.resourceList(result).createOrReplace();
+    for (HasMetadata object : result){
+      ObjectMeta meta = object.getMetadata();
+      // Patch all objects with owner references
+      meta.setOwnerReferences(buildOwnerReference(resource));
+      object.setMetadata(meta);
+      // Apply Kubernetes Resources
+      log.info("Creating resource kind: " + object.getKind() + " with name: " + meta.getName() );
+      client.resource(object).createOrReplace();
+    }
+  }
+
+  private List<OwnerReference> buildOwnerReference(ExampleValues resource) {
+    List<OwnerReference> refs = new ArrayList<>();
+    refs.add(new OwnerReference(
+                            resource.getApiVersion(),
+                            true,
+                            true,
+                            resource.getKind(),
+                            resource.getMetadata().getName(),
+                            resource.getMetadata().getUid()));
+    return refs;
   }
 
 }
