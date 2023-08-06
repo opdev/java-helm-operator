@@ -6,6 +6,13 @@ A proof-of-concept operator in Java, which parses and applies a Helm chart with 
 ## Testing steps (with hack for now)
 
 Create a namespace `helmtest`.
+
+Create CRD
+```
+oc apply -f hack/examplevalues.tools.opdev.io-v1.yml
+```
+
+Create operator deployment and test CR
 ```
 oc apply -f hack/kubernetes.yml
 oc apply -f hack/cr-test-example-resource.yaml
@@ -36,4 +43,10 @@ Create VSCode launch json for attaching:
     ]
   }
 ```
+
+Copy the helm chart to a local testable folder
+```
+cp -r src/main/resources/example-chart  deployments/
+```
+
 And then `make local-run` and click debug.

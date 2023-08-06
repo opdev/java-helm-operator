@@ -36,3 +36,9 @@ bin/
 
 # Generated bundle folder
 bundle/
+
+# Jetbrains
+*.iml
+
+# Generated helm resources
+deployments/

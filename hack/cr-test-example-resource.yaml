@@ -3,7 +3,7 @@ kind: ExampleValues
 metadata:
   name: test-resource
 spec:
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: nginx
     pullPolicy: IfNotPresent
@@ -34,7 +34,7 @@ spec:
     type: ClusterIP
     port: 80
   ingress:
-    enabled: false
+    enabled: true
     className: ""
     annotations: {}
       # kubernetes.io/ingress.class: nginx
