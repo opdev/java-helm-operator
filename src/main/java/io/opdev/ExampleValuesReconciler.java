@@ -54,7 +54,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     File[] files = helmOutputDirectory.listFiles((pathname) -> pathname.getName().endsWith(".yaml"));
 
     for (File yaml : files){
-       createFromYaml(yaml.getAbsolutePath(), resource);
+       createFromYaml(yaml.getAbsolutePath(), resource, context);
     }
     
     return UpdateControl.noUpdate();
@@ -89,7 +89,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   }
 
 
-  private void createFromYaml(String pathToYaml, ExampleValues resource) throws FileNotFoundException {
+  private void createFromYaml(String pathToYaml, ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
     log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
@@ -101,9 +101,9 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       desiredObject.setMetadata(meta);
       // Get actual resource from the namespace
       HasMetadata actualObject = findResourceInNamespace(desiredObject, resource.getMetadata().getNamespace());
-      if (needToUpdateState(desiredObject, actualObject)){
+      if (needToUpdateState(desiredObject, actualObject, context)){
          log.info("Creating or updating resource kind: " + desiredObject.getKind() + " with name: " + meta.getName());
-         client.resource(desiredObject).createOrReplace();
+         client.resource(desiredObject).serverSideApply();
       }
       else {
          log.info("Skipping resource kind: " + desiredObject.getKind() + " with name: " + meta.getName() + " since it already matches desired state");
@@ -123,17 +123,16 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       .withName(desiredObject.getMetadata().getName())
       .get();
   }
+  }
 
-  private boolean needToUpdateState(HasMetadata desiredObject, HasMetadata actualObject){
+  private boolean needToUpdateState(HasMetadata desiredObject, HasMetadata actualObject, Context<ExampleValues> context){
       if (actualObject == null){
         // Initial creation is needed
         return true;
       }
 
       // Perform diff
-      Result<HasMetadata> matcherResult = GenericKubernetesResourceMatcher.match(desiredObject, actualObject, false);
-      //.match(desiredObject, actualObject, true, true);
-      //.match(actualObject, desiredObject, metaContext);
+      Result<HasMetadata> matcherResult = GenericKubernetesResourceMatcher.match(desiredObject, actualObject, false, true, true, context, null);
       
       // return true if not matched, to indicate a need to update actual state
       return !matcherResult.matched();
