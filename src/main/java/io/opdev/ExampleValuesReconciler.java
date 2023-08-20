@@ -91,6 +91,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
   private void createFromYaml(String pathToYaml, ExampleValues resource) throws FileNotFoundException {
     log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
+    log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
     for (HasMetadata desiredObject : result){
@@ -98,8 +99,9 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       // Patch all objects with owner references
       meta.setOwnerReferences(buildOwnerReference(resource));
       desiredObject.setMetadata(meta);
-
-      if (needToUpdateState(desiredObject, resource.getMetadata().getNamespace())){
+      // Get actual resource from the namespace
+      HasMetadata actualObject = findResourceInNamespace(desiredObject, resource.getMetadata().getNamespace());
+      if (needToUpdateState(desiredObject, actualObject)){
          log.info("Creating or updating resource kind: " + desiredObject.getKind() + " with name: " + meta.getName());
          client.resource(desiredObject).createOrReplace();
       }
@@ -109,18 +111,20 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     }
   }
 
-  private boolean needToUpdateState(HasMetadata desiredObject, String namespace){
+  private HasMetadata findResourceInNamespace(HasMetadata desiredObject, String namespace) {
     ResourceDefinitionContext metaContext = new ResourceDefinitionContext.Builder()
       .withKind(desiredObject.getKind())
       .withNamespaced(true)
       .build();
 
       // Get the existing actual kubernetes resource
-      HasMetadata actualObject = client.genericKubernetesResources(metaContext)
+      return client.genericKubernetesResources(metaContext)
       .inNamespace(namespace)
       .withName(desiredObject.getMetadata().getName())
       .get();
+  }
 
+  private boolean needToUpdateState(HasMetadata desiredObject, HasMetadata actualObject){
       if (actualObject == null){
         // Initial creation is needed
         return true;
