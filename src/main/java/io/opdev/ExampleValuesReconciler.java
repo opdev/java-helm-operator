@@ -90,7 +90,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
 
   private void createFromYaml(String pathToYaml, ExampleValues resource) throws FileNotFoundException {
-    log.info("Applying yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
+    log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
     for (HasMetadata desiredObject : result){
@@ -98,9 +98,13 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       // Patch all objects with owner references
       meta.setOwnerReferences(buildOwnerReference(resource));
       desiredObject.setMetadata(meta);
+
       if (needToUpdateState(desiredObject, resource.getMetadata().getNamespace())){
-         log.info("Creating or updating resource kind: " + desiredObject.getKind() + " with name: " + meta.getName() );
+         log.info("Creating or updating resource kind: " + desiredObject.getKind() + " with name: " + meta.getName());
          client.resource(desiredObject).createOrReplace();
+      }
+      else {
+         log.info("Skipping resource kind: " + desiredObject.getKind() + " with name: " + meta.getName() + " since it already matches desired state");
       }
     }
   }

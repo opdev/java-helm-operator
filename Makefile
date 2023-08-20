@@ -33,7 +33,7 @@ IMAGE_TAG_BASE ?= quay.io/opdev/java-helm-operator
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/opdev/java-helm-operator-controller:latest
+IMG ?= quay.io/opdev/java-helm-operator-controller:$(VERSION)
 
 all: docker-build
 
