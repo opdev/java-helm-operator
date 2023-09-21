@@ -91,7 +91,6 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
   private void createFromYaml(String pathToYaml, ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
     log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
-    log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
     for (HasMetadata desiredObject : result){
@@ -123,7 +122,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       .withName(desiredObject.getMetadata().getName())
       .get();
   }
-  }
+  
 
   private boolean needToUpdateState(HasMetadata desiredObject, HasMetadata actualObject, Context<ExampleValues> context){
       if (actualObject == null){
@@ -132,7 +131,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
       }
 
       // Perform diff
-      Result<HasMetadata> matcherResult = GenericKubernetesResourceMatcher.match(desiredObject, actualObject, false, true, true, context, null);
+      Result<HasMetadata> matcherResult = GenericKubernetesResourceMatcher.match(desiredObject, actualObject, true, true, true, context, null);
       
       // return true if not matched, to indicate a need to update actual state
       return !matcherResult.matched();
