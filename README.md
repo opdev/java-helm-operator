@@ -1,7 +1,7 @@
 # Java Helm Operator
 A proof-of-concept operator in Java, which parses and applies a Helm chart with values given by the user.
 
-## DO NOT USE YET. BROKEN.
+## Disclaimer: Still kind of broken.
 
 ## Testing steps (with hack for now)
 
@@ -46,7 +46,10 @@ Create VSCode launch json for attaching:
 
 Copy the helm chart to a local testable folder
 ```
-cp -r src/main/resources/example-chart  deployments/
+mkdir deployments
+cp -r src/main/resources/example-chart deployments/example-chart
 ```
 
 And then `make local-run` and click debug.
+
+Note: the real path inside the controller manager image is `/deployments` as seen in `src/main/docker/Dockerfile.jvm`.
