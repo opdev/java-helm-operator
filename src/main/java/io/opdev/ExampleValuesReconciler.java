@@ -20,6 +20,7 @@ import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
+import io.fabric8.zjsonpatch.internal.guava.Strings;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
@@ -111,10 +112,25 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   }
 
   private HasMetadata findResourceInNamespace(HasMetadata desiredObject, String namespace) {
-    ResourceDefinitionContext metaContext = new ResourceDefinitionContext.Builder()
+    String groupVersion = desiredObject.getApiVersion();
+    ResourceDefinitionContext metaContext;
+
+    if (!Strings.isNullOrEmpty(groupVersion) && groupVersion.contains("/")){
+      String group = groupVersion.split("/")[0];
+      String version = groupVersion.split("/")[1];
+      metaContext = new ResourceDefinitionContext.Builder()
+      .withGroup(group)
+      .withVersion(version)
       .withKind(desiredObject.getKind())
       .withNamespaced(true)
       .build();
+    }
+    else{
+      metaContext = new ResourceDefinitionContext.Builder()
+      .withKind(desiredObject.getKind())
+      .withNamespaced(true)
+      .build();
+    }
 
       // Get the existing actual kubernetes resource
       return client.genericKubernetesResources(metaContext)
