@@ -19,9 +19,12 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
+import io.javaoperatorsdk.operator.processing.dependent.Matcher.Result;
+import io.javaoperatorsdk.operator.processing.dependent.kubernetes.GenericKubernetesResourceMatcher;
 import org.yaml.snakeyaml.Yaml;
 
 
@@ -51,7 +54,7 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     File[] files = helmOutputDirectory.listFiles((pathname) -> pathname.getName().endsWith(".yaml"));
 
     for (File yaml : files){
-       createFromYaml(yaml.getAbsolutePath(), resource);
+       createFromYaml(yaml.getAbsolutePath(), resource, context);
     }
     
     return UpdateControl.noUpdate();
@@ -86,19 +89,53 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
   }
 
 
-  private void createFromYaml(String pathToYaml, ExampleValues resource) throws FileNotFoundException {
-    log.info("Applying yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
+  private void createFromYaml(String pathToYaml, ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
+    log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
+    log.info("Parsing yaml " + pathToYaml + " to the namespace " + resource.getMetadata().getNamespace());
     // Parse a yaml into a list of Kubernetes resources
     List<HasMetadata> result = client.load(new FileInputStream(pathToYaml)).get();
-    for (HasMetadata object : result){
-      ObjectMeta meta = object.getMetadata();
+    for (HasMetadata desiredObject : result){
+      ObjectMeta meta = desiredObject.getMetadata();
       // Patch all objects with owner references
       meta.setOwnerReferences(buildOwnerReference(resource));
-      object.setMetadata(meta);
-      // Apply Kubernetes Resources
-      log.info("Creating resource kind: " + object.getKind() + " with name: " + meta.getName() );
-      client.resource(object).createOrReplace();
+      desiredObject.setMetadata(meta);
+      // Get actual resource from the namespace
+      HasMetadata actualObject = findResourceInNamespace(desiredObject, resource.getMetadata().getNamespace());
+      if (needToUpdateState(desiredObject, actualObject, context)){
+         log.info("Creating or updating resource kind: " + desiredObject.getKind() + " with name: " + meta.getName());
+         client.resource(desiredObject).serverSideApply();
+      }
+      else {
+         log.info("Skipping resource kind: " + desiredObject.getKind() + " with name: " + meta.getName() + " since it already matches desired state");
+      }
     }
+  }
+
+  private HasMetadata findResourceInNamespace(HasMetadata desiredObject, String namespace) {
+    ResourceDefinitionContext metaContext = new ResourceDefinitionContext.Builder()
+      .withKind(desiredObject.getKind())
+      .withNamespaced(true)
+      .build();
+
+      // Get the existing actual kubernetes resource
+      return client.genericKubernetesResources(metaContext)
+      .inNamespace(namespace)
+      .withName(desiredObject.getMetadata().getName())
+      .get();
+  }
+  }
+
+  private boolean needToUpdateState(HasMetadata desiredObject, HasMetadata actualObject, Context<ExampleValues> context){
+      if (actualObject == null){
+        // Initial creation is needed
+        return true;
+      }
+
+      // Perform diff
+      Result<HasMetadata> matcherResult = GenericKubernetesResourceMatcher.match(desiredObject, actualObject, false, true, true, context, null);
+      
+      // return true if not matched, to indicate a need to update actual state
+      return !matcherResult.matched();
   }
 
   private List<OwnerReference> buildOwnerReference(ExampleValues resource) {
