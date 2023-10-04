@@ -1,4 +1,3 @@
-
 VERSION ?= 0.0.1
 IMAGE_BUILDER?=podman
 

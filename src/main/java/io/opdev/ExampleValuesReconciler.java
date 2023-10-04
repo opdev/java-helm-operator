@@ -38,20 +38,21 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
 
   private static final Logger log = LoggerFactory.getLogger(ExampleValuesReconciler.class);
 
-  private static final String PATH_TO_CHART = "deployments/example-chart";
+  private static final String CHART_NAME = "example-chart";
+  private static final String PATH_TO_CHART = "deployments/" + CHART_NAME;
   private static final String OUTPUT_DIR = "deployments/helm-output";
-  private static final String VALUES_YAML = "deployments/userValues.yaml";
+  private static final String VALUES_DIR = "deployments/values";
 
   @Override
   public UpdateControl<ExampleValues> reconcile(ExampleValues resource, Context<ExampleValues> context) throws FileNotFoundException {
     try {
-        writeValuesYaml(resource);
-        parseTemplates(resource.getMetadata().getName());
+        writeValuesFromSpec(resource);
+        renderYamlTemplates(resource);
     } catch (Exception e) {
        log.error("parse templates failed!", e);
     }
     
-    File helmOutputDirectory = new File(OUTPUT_DIR + "/example-chart/templates");
+    File helmOutputDirectory = new File(String.format("%s/%s/%s/templates", OUTPUT_DIR, resource.getMetadata().getUid(), CHART_NAME));
     File[] files = helmOutputDirectory.listFiles((pathname) -> pathname.getName().endsWith(".yaml"));
 
     for (File yaml : files){
@@ -61,15 +62,17 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     return UpdateControl.noUpdate();
   }
 
-  private void writeValuesYaml(ExampleValues resource) throws IOException {
+  private void writeValuesFromSpec(ExampleValues resource) throws IOException {
     validateParsableResource(resource);
     // We can surpress the cast, since assertions were true
     @SuppressWarnings("unchecked") 
     Map<String,Object> valuesMap = (Map<String,Object>) resource.getAdditionalProperties().get("spec");
     Yaml valuesYaml = new Yaml();
-    Path path = Paths.get(VALUES_YAML).toAbsolutePath();
-    log.info("Parsed the following values from spec : " + valuesYaml.dump(valuesMap));
+    String valuesPath = String.format("%s/%s/UserValues.yaml", VALUES_DIR, resource.getMetadata().getUid());
+    Path path = Paths.get(valuesPath).toAbsolutePath();
+    Files.createDirectories(path);
     Files.writeString(path, valuesYaml.dump(valuesMap), StandardCharsets.UTF_8);
+    log.info(String.format("Parsed the following values from spec : %s", valuesYaml.dump(valuesMap)));
   }
 
   private void validateParsableResource(ExampleValues resource) throws AssertionError {
@@ -82,9 +85,11 @@ public class ExampleValuesReconciler implements Reconciler<ExampleValues> {
     assert specMap != null && specMap instanceof Map<?,?> : "Invalid resource spec " + resource.getMetadata().getName();
   }
 
-  private void parseTemplates(String releaseName) throws IOException, InterruptedException {
-    log.info("Running helm template to parse " + PATH_TO_CHART + " and saving output to " + OUTPUT_DIR);
-    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", releaseName, PATH_TO_CHART, "-f", VALUES_YAML, "--output-dir", OUTPUT_DIR).start();
+  private void renderYamlTemplates(ExampleValues resource) throws IOException, InterruptedException {
+    String valuesDir = VALUES_DIR + "/" + resource.getMetadata().getUid() + "/" + "UserValues.yaml";
+    String outputDir = OUTPUT_DIR + "/" + resource.getMetadata().getUid() + "/";
+    log.info(String.format("Running helm template to render %s and saving output to %s", PATH_TO_CHART, outputDir));
+    Process helmTemplateProcess = new ProcessBuilder().inheritIO().command("helm", "template", resource.getMetadata().getName(), PATH_TO_CHART, "-f", valuesDir, "--output-dir", outputDir).start();
     helmTemplateProcess.waitFor();
 
   }
